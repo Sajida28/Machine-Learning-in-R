@@ -1,0 +1,619 @@
+---
+title: Estimation of BMI Levels Based on Eating Habits and Physical Conditions
+date: "2023-11-28"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Contents:
+
+1.	Problem Statement 
+
+2.	Introduction 
+
+3.	Methodology 
+
+4.	Data Analysis and Results 
+
+5.	Evaluation 
+
+6.	Conclusion
+
+
+### Problem Statement:
+
+The objective of this study is to develop predictive models to estimate BMI in individuals from Mexico, Peru, and Colombia. The dataset that will be used for this project includes information on individuals’ eating habits and physical conditions, with a class variable indicating BMI levels. This information can help in identifying significant predictors and developing models that can assist in early detection and intervention. Obesity has become a global health concern, and understanding the factors contributing to obesity levels is crucial for public health interventions.
+
+### Introduction:
+
+Eating habits play a crucial role in the ongoing challenge of obesity. In a world with an abundance of food choices and easy access to high-calorie options, our eating behaviors have a profound impact on our health. The obesity epidemic is, in large part, influenced by the way we eat - the types of food we choose, our lower physical activities, and our overall dietary patterns. Unhealthy eating habits, often characterized by the consumption of energy-dense, nutrient-poor foods and irregular meal patterns, contribute significantly to weight gain. This introduction sets the stage to delve into the complex relationship between eating habits and obesity, exploring how our food choices, environments, and behaviors collectively shape our health outcomes.
+
+### Methodology:
+
+This study begins by sourcing data from the UC Irvine Machine Learning Repository, focusing on information related to estimating BMI based on eating habits and physical condition. The initial step involves data collection, where in we provide insights into the data source. 
+Dataset Source:
+[UC Irvine Machine Learning Repository]: https://archive.ics.uci.edu/dataset/544/estimation+of+obesity+levels+based+on+eating+habits+and+physical+condition
+
+### Features of Dataset:
+
+Attributes The dataset includes various attributes that provide information on individuals’ characteristics, eating habits, and physical condition.
+•	FAVC: Frequent consumption of high-caloric food. 
+•	FCVC: Frequency of consumption of vegetables.
+•	NCP: Number of main meals. 
+•	CAEC: Consumption of food between meals. 
+•	CH20: Consumption of water daily. 
+•	CALC: Consumption of alcohol. 
+•	SCC: Calories consumption monitoring. 
+•	FAF: Physical activity frequency. 
+•	TUE: Time using technology devices. 
+•	MTRANS: Transportation used. 
+•	Gender. 
+•	Age. 
+•	Height. 
+•	Weight.
+
+## Exploratory Data Analysis:
+
+Following this, a meticulous exploratory data analysis (EDA) is conducted, involving a thorough examination of crucial numerical values, a detailed description of data set features, addressing missing information, and addressing unusual data patterns through visual aids.
+
+
+Initial Inferences/Research Questions:
+
+
+After conducting Exploratory Data Analysis (EDA) and drawing initial inferences from the data, the next step involves hypothesis testing. In this phase, we aim to test specific hypotheses related to the dataset.
+
+
+•	Is there any significant difference in average BMI based of physical activity?
+•	Are there significant variations in average BMI across different levels of CH2O when considering gender differences?
+•	Is there a statistically significant difference in the mean BMI between individuals who smoke and those who do not? 
+•	Does the mean BMI differ between individuals with a family history of overweight and those without such a family history? 
+•	Is there a significant difference in BMI between individuals who frequently consume high-calorie foods and those who do not?
+
+### Model Building:
+
+In this phase of our analysis, we meticulously partitioned the dataset into training and testing sets to ensure a robust evaluation of model performance. For predicting BMI, we chose a linear regression model, leveraging its suitability for regression tasks, and applied it to our relevant features. Additionally, recognizing the power of ensemble methods, we constructed a Random Forest model that incorporates decision trees to capture complex relationships within the data. This approach enables us to explore both linear and non-linear patterns, providing a comprehensive understanding of the BMI prediction task.
+
+
+### Libraries to use:
+```{r}
+suppressWarnings(suppressMessages(library(stats)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(RColorBrewer)))
+suppressWarnings(suppressMessages(library(tibble)))
+suppressWarnings(suppressMessages(library(caret)))
+suppressWarnings(suppressMessages(library(pander)))
+suppressWarnings(suppressMessages(library(randomForest)))
+suppressWarnings(suppressMessages(library(corrplot)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(reshape2)))
+suppressWarnings(suppressMessages(library(gridExtra)))
+suppressWarnings(suppressMessages(library(lmtest)))
+suppressWarnings(suppressMessages(library(GGally)))
+suppressWarnings(suppressMessages(library(graphics)))
+suppressWarnings(suppressMessages(library(lmtest)))
+suppressWarnings(suppressMessages(library(MASS)))
+suppressWarnings(suppressMessages(library(rpart)))
+suppressWarnings(suppressMessages(library(rpart.plot)))
+```
+
+Data Analysis and Result:
+
+We are going to read our dataset and assign it to 'data'
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/Sajida28/Final-Project-Statistics/main/ObesityDataSet_raw_and_data_sinthetic.csv")
+pander(head(data))
+str(data)
+sum(is.na(data))
+class(data)
+```
+Creating two new varibales 'BMI' and 'BMI Categories'
+```{r}
+# Calculate BMI and create a new column 'BMI'
+data$BMI <- data$Weight / (data$Height ^ 2)
+
+# Create a new factor variable 'BMI_Categories' based on BMI levels
+data$BMI_Categories <- cut(data$BMI,
+                           breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
+                           labels = c("Underweight", "Normal", "Overweight", "Obesity"),
+                           include.lowest = TRUE)
+
+# Convert to factor
+data$BMI_Categories <- factor(data$BMI_Categories, levels = c("Underweight", "Normal", "Overweight", "Obesity"))
+
+
+# Display the updated DataFrame
+pander(head(data))
+summary(data)
+```
+
+Histograms and Barplots to visualize the distribution of our attributes.
+
+```{r}
+numeric_cols <- sapply(data, is.numeric)
+numeric_data <- data[, numeric_cols]
+
+colors <- c('lightgreen', 'plum', 'orange', 'dodgerblue', 'lightcoral', 'blue', 'skyblue', 'purple','coral')
+
+# 2 rows and 2 columns layout
+par(mfrow = c(2, 3))
+
+#Histogram of Numerical Variables
+for (i in seq_along(colnames(numeric_data))) {
+  col <- colnames(numeric_data)[i]
+  hist(numeric_data[[col]], main = paste("Histogram of", col), xlab = col, ylab = "Frequency", col = colors[i])
+}
+
+
+```
+
+```{r}
+# Select only the character and factor columns
+categorical_cols <- sapply(data, function(x) is.character(x) || is.factor(x))
+categorical_data <- data[, categorical_cols]
+
+# Set up a vector of colors for the bar plots
+colors <- c('lightgreen', 'plum', 'orange', 'dodgerblue', 'lightcoral', 'gold', 'skyblue','blue', 'coral')
+
+# Create bar plots for each categorical column
+for (col in colnames(categorical_data)) {
+  table_data <- table(categorical_data[[col]])
+  barplot(table_data, main = paste("Bar Plot of", col), xlab = col, ylab = "Frequency", col = colors, border = "white", space = 0.5, lwd=2)
+}
+
+```
+We used the quantiles and IQR to identify possible outliers in all numerical attributes. 
+```{r}
+
+for (col in names(data[,numeric_cols])) {
+    Q1 <- quantile(data[[col]], 0.25)
+    Q3 <- quantile(data[[col]], 0.75)
+    IQR <- Q3 - Q1
+    
+
+outliers <- which(data[[col]] < (Q1 - 1.5 * IQR) | data[[col]] > (Q3 + 1.5 * IQR))
+
+}
+```
+
+Box plot of Numerical Variables:
+
+```{r}
+# Including only numeric columns
+numeric_cols <- sapply(data, is.numeric)
+numeric_data <- data[, numeric_cols]
+
+# Set up colors
+colors <- c('lightgreen', 'plum', 'orange', 'dodgerblue', 'lightcoral', 'purple', 'skyblue', 'blue', 'coral')
+
+#1 Rows 2 Columns Layout
+par(mfrow = c(1, 2))
+
+for (i in seq_along(colnames(numeric_data))) {
+  boxplot(numeric_data[[i]], col = colors[i], main = paste("Boxplot of", colnames(numeric_data)[i]), ylab = "Value", border = colors[i])
+}
+ 
+
+```
+
+
+
+We used a matrix correlation to select relevant features.
+```{r}
+cor_matrix <- cor(numeric_data)
+cor_matrix
+```
+
+We are also going to visualize it using the library(corrplot)
+
+```{r}
+
+corrplot(cor_matrix)
+
+```
+
+
+As we can see in the graph above that BMI has a positive correlation with the attributes Age, Height, FCVC, NCP, CH20 and negative correlation with FAF. 
+
+Hypothesis 1:
+
+Null Hypothesis (H0): There is no significant difference in average BMI between people with different levels of physical activity.
+Alternative Hypothesis (H1): People with higher physical activity have a lower average BMI.
+
+```{r}
+#Create a new variable 'FAF_Levels'
+data$FAF_Level <- factor(ifelse(data$FAF <= 0.5, "Lower Physical Activity", "Higher Physical Activity"))
+
+#Applying student t-test to check our inference
+# Perform t-test
+BMI_FAF_results <- t.test(data$BMI ~ data$FAF_Level)
+
+# Display the result
+print(BMI_FAF_results)
+#Boxplot
+ggplot(data, aes(x = FAF_Level, y = BMI, fill = FAF_Level)) +
+  geom_boxplot() +
+  labs(title = "Box Plot of BMI between FAF Levels", x = "FAF Level", y = "BMI")
+
+```
+Hypothesis 2:
+Null Hypothesis(H0): There is no significant difference in the average BMI among different CH2O levels among genders.
+Alternative Hypothesis(H1): There is a significant difference in the average BMI among different CH2O levels among genders.
+
+```{r}
+
+# Create a new factor variable 'CH2O_Levels' based on numerical conditions
+data$CH2O_Levels <- factor(ifelse(data$CH2O <= 1, "Lower",
+                                  ifelse(data$CH2O <= 2, "Moderate", "Adequate")))
+# Specify the order of levels
+order_levels <- c("Lower", "Moderate", "Adequate")
+
+# Create a factor variable with specified order
+data$CH2O_Levels <- factor(data$CH2O_Levels, levels = order_levels)
+
+# Separate data for males and females
+male_data <- subset(data, Gender == "Male")
+female_data <- subset(data, Gender == "Female")
+
+levels(male_data$CH2O_Levels)
+levels(female_data$CH2O_Levels)
+#Checking assumptions before apply ANOVA test
+# Check normality of residuals for males
+residuals_male <- residuals(aov(BMI ~ CH2O_Levels, data = male_data))
+
+# Check normality of residuals for females
+residuals_female <- residuals(aov(BMI ~ CH2O_Levels, data = female_data))
+
+# Check homogeneity of variances for males
+fitted_values_male <- fitted(aov(BMI ~ CH2O_Levels, data = male_data))
+plot(fitted_values_male, residuals_male, main = "Homogeneity of Variances (Males)")
+
+# Check homogeneity of variances for females
+fitted_values_female <- fitted(aov(BMI ~ CH2O_Levels, data = female_data))
+plot(fitted_values_female, residuals_female, main = "Homogeneity of Variances (Females)")
+
+table_plot <- table(data$Gender, data$CH2O_Levels)
+barplot(table_plot, beside = TRUE, legend.text = TRUE, col = c("lightblue", "pink"), main = "Group Sizes by Gender and CH2O_Levels")
+
+# Shapiro-Wilk test for normality
+shapiro_test_male <- shapiro.test(residuals_male)
+shapiro_test_female <- shapiro.test(residuals_female)
+# Print results
+print(shapiro_test_male)
+print(shapiro_test_female)
+
+```
+By observing the results of the Shapiro-Wilk normality test for both male and female groups, we find that the p-values are extremely small, indicating a significant departure from normality in the residuals. This implies that the assumption of normality is violated.
+
+Despite this violation, it's essential to consider the robustness of ANOVA, especially when dealing with large sample sizes. ANOVA is known to be less sensitive to normality assumptions under such circumstances.
+
+#ANOVA 
+```{r}
+
+# Perform ANOVA for males
+anova_result_male <- aov(BMI ~ CH2O_Levels, data = male_data)
+
+# Display ANOVA summary for males
+summary(anova_result_male)
+
+# Perform ANOVA for females
+anova_result_female <- aov(BMI ~ CH2O_Levels, data = female_data)
+
+# Display ANOVA summary for females
+summary(anova_result_female)
+
+#posthoc test
+
+# Conduct Tukey's test for males and females
+tukey_result_male <- TukeyHSD(anova_result_male)
+tukey_result_female <- TukeyHSD(anova_result_female)
+
+# Summarize the results
+print(tukey_result_male)
+print(tukey_result_female)
+```
+Hypothesis 3: 
+Null Hypothesis (H0): There is no significant difference in the mean BMI between smokers and non-smokers.
+Alternative Hypothesis (H1): There is a significant difference in the mean BMI between smokers and non-smokers.
+
+```{r}
+#performing t test
+t_test_result <- t.test(data$BMI ~ data$SMOKE, data = data)
+
+# Display t-test summary
+print(t_test_result)
+# boxplot
+
+ggplot(data, aes(x = SMOKE, y = BMI, fill = SMOKE)) +
+  geom_boxplot() +
+  labs(title = "Box Plot of BMI between Smokers and non Smokers", x = "SMOKE", y = "BMI")
+
+
+```
+Hypothesis 4:
+Null Hypothesis (H0): There is no significant difference in the mean BMI between individuals with a family history of overweight and those without.
+Alternative Hypothesis (H1): Individuals with a family history of overweight have a different mean BMI compared to those without a family history of overweight.
+
+```{r}
+# Perform a t-test
+t_test_result <- t.test(BMI ~ family_history_with_overweight, data = data)
+
+# Display t-test summary
+print(t_test_result)
+# Create a boxplot for family history
+ggplot(data, aes(x = family_history_with_overweight, y = BMI, fill = family_history_with_overweight)) +
+  geom_boxplot() +
+  labs(title = "Box Plot of BMI between Individuals with Family History of Overweight",
+       x = "Family History of Overweight",
+       y = "BMI")
+```
+Hypothesis 5: 
+Null Hypothesis (H0): There is no significant difference in BMI between individuals who consume high-calorie foods frequently (FAVC = Yes) and those who don't (FAVC = No).
+Alternative Hypothesis (H1): There is a significant difference in BMI between individuals who consume high-calorie foods frequently (FAVC = Yes) and those who don't (FAVC = No).
+```{r}
+# Assuming your dataset is named 'data'
+t_test_result <- t.test(BMI ~ FAVC, data = data)
+
+# Display t-test summary
+print(t_test_result)
+
+# Create a boxplot for FAVC
+ggplot(data, aes(x = FAVC, y = BMI, fill = FAVC)) +
+  geom_boxplot() +
+  labs(title = "Box Plot of BMI between Individuals who Consume High-Calorie Foods Frequently and Those who Don't",
+       x = "Consume High-Calorie Foods Frequently (FAVC)",
+       y = "BMI")
+
+```
+
+
+Now we choose the most relevant features on our dataset 
+
+```{r}
+relevant_features <- c("Age","Height", "FAF_Level","family_history_with_overweight" ,"NCP","CH2O_Levels","Gender","FAVC","CAEC","SMOKE","SCC","CALC","MTRANS" )
+
+# Subset the dataset
+data_relevant <- data[, c(relevant_features, "BMI", "BMI_Categories")]
+
+str(data_relevant)
+
+```
+
+
+
+
+
+
+```{r}
+
+str(data_relevant)
+
+```
+```{r}
+data_relevant$FAVC= as.factor(data_relevant$FAVC)
+data_relevant$Gender= as.factor(data_relevant$Gender)
+data_relevant$SMOKE= as.factor(data_relevant$SMOKE)
+data_relevant$family_history_with_overweight= as.factor(data_relevant$family_history_with_overweight)
+data_relevant$CAEC= as.factor(data_relevant$CAEC)
+data_relevant$SCC= as.factor(data_relevant$SCC)
+data_relevant$CALC= as.factor(data_relevant$CALC)
+data_relevant$MTRANS= as.factor(data_relevant$MTRANS)
+
+str(data_relevant)
+```
+
+```{r}
+
+factor_vars <- names(Filter(is.factor, data_relevant))
+
+for (factor_var in factor_vars) {
+  p <- ggplot(data_relevant, aes(x = !!sym(factor_var), y = BMI, fill = !!sym(factor_var))) +
+    geom_boxplot() +
+    labs(title = paste("Box Plot of BMI across", factor_var), x = factor_var, y = "BMI")
+  
+  print(p)  # Print each plot
+}
+
+```
+
+
+### Train/ test data split
+
+```{r}
+set.seed(123) # For reproducibility
+train_index <- sample(1:nrow(data_relevant), 0.7 * nrow(data_relevant))
+train_data <- data_relevant[train_index, ]
+test_data <- data_relevant[-train_index, ]
+```
+
+### Linear Model Building and Evaluation:
+```{r}
+
+
+lm_1 <- lm(BMI ~ Age + Height + FAF_Level + family_history_with_overweight +NCP + CH2O_Levels + Gender + FAVC + CAEC + SMOKE + SCC + CALC + MTRANS,data = train_data)
+
+summary(lm_1)
+
+```
+As we can see in the summary above, the p values and significance of some of these features do not contribute to the model so we are goingt to remove them.
+
+```{r}
+
+lm_2 <- lm(BMI ~  Height + FAF_Level + family_history_with_overweight + CH2O_Levels + Gender + FAVC + CAEC + SCC + MTRANS, data = train_data)
+
+summary(lm_2)
+
+```
+
+Although we did not some variables that did not provide significance or a lower p-values. The Linear Model 1 seems to have a slightly better fit based on the higher R-squared values, considering the additional predictors it incorporates compared to Model 2.
+
+### Prediction on test set Linear Model 1
+
+```{r}
+
+predicted_values_lm1 <- predict(lm_1, newdata = test_data)
+                               
+# Mean Squared Error 
+mse_lm1 <- mean((test_data$BMI - predicted_values_lm1)^2)
+
+# R-squared 
+actual_mean_lm1 <- mean(test_data$BMI)
+ss_total_lm1 <- sum((test_data$BMI - actual_mean_lm1)^2)
+ss_residual_lm1 <- sum((test_data$BMI - predicted_values_lm1)^2)
+r_squared_lm1 <- 1 - (ss_residual_lm1 / ss_total_lm1)
+
+
+cat("Mean Squared Error:", mse_lm1, "\n")
+cat("R-squared:", r_squared_lm1, "\n")
+
+```
+
+The average squared difference between the predicted BMI values and the actual BMI values is around 33.5923, indicating the average error of the model in predicting BMI.
+The linear model 1, as currently structured, seems to explain about 44.35% of the variance in BMI based on the predictors included.
+
+
+### Prediction on test set Linear Model 2
+```{r}
+predicted_values_lm2 <- predict(lm_2, newdata = test_data)
+                               
+# Mean Squared Error 
+mse_lm2 <- mean((test_data$BMI - predicted_values_lm2)^2)
+
+# R-squared 
+actual_mean_lm2 <- mean(test_data$BMI)
+total_sum_sq_lm2 <- sum((test_data$BMI - actual_mean_lm2)^2)
+residual_sum_sq_lm2 <- sum((test_data$BMI - predicted_values_lm2)^2)
+r_squared_lm1 <- 1 - (residual_sum_sq_lm2 / total_sum_sq_lm2)
+
+
+cat("Mean Squared Error:", mse_lm1, "\n")
+cat("R-squared:", r_squared_lm1, "\n")
+
+```
+While both models have the same prediction accuracy (MSE), the first model performs better in explaining the variance in BMI, indicating a better fit to the data compared to the second model.
+
+
+### Random Forest 
+```{r}
+rf <- randomForest(BMI ~ Age + Height + FAF_Level + family_history_with_overweight +NCP + CH2O_Levels + Gender + FAVC + CAEC + SMOKE + SCC + CALC + MTRANS, data = train_data, ntree=500)
+
+print(rf)
+```
+This Random Forest regression model appears to perform well on the training data, showing relatively low mean squared residuals and explaining a substantial percentage of the variance in BMI. But now we are going to validate its performance using the 'test_data'.
+
+
+```{r}
+predicted_values_rf <- predict(rf, newdata = test_data) #for model accuracy
+
+mse_rf <- mean((test_data$BMI - predicted_values_rf)^2)
+r_squared_rf <- cor(test_data$BMI, predicted_values_rf)^2
+
+cat("Mean Squared Error (RF):", mse_rf, "\n")
+cat("R-squared (RF):", r_squared_rf, "\n")
+```
+These results from the test data indicate that the Random Forest model performs well and generalizes effectively to new, unseen data. 
+```{r}
+# Assess variable importance
+var_imp <- importance(rf)
+varImpPlot(rf)
+
+```
+
+
+### Prediction Comparison Plot: 
+
+```{r}
+# Scatter plot of Actual vs Predicted values for Linear Regression
+plot(test_data$BMI, predicted_values_lm1, col = "blue", pch = 16, 
+     xlab = "Actual BMI", ylab = "Predicted BMI", 
+     main = "Comparison of Predictions - Linear Regression vs. Random Forest")
+
+# Adding points for Random Forest predictions
+points(test_data$BMI, predicted_values_rf, col = "red", pch = 16)
+
+# Adding points for actual BMI values
+points(test_data$BMI, test_data$BMI, col = "black", pch = 20) 
+
+legend("topleft", legend = c("Linear Regression", "Random Forest", "Actual BMI"), 
+       col = c("blue", "red", "black"), pch = c(16, 16, 20))
+
+```
+
+### Residual Comparison Plot
+
+```{r}
+
+res_lm <- test_data$BMI - predicted_values_lm1
+res_rf <- test_data$BMI - predicted_values_rf
+plot(res_lm, col = "blue", pch = 16, xlab = "Index", ylab = "Residuals", main = "Comparison of Residuals - Linear Regression vs. Random Forest")
+
+points(res_rf, col = "red", pch = 16)
+legend("topleft", legend = c("Linear Regression", "Random Forest"), col = c("blue", "red"), pch = 16)
+
+abline(h = 0, col = "black", lty = 2)  
+
+
+
+
+```
+By analyzing the residual plot we can see that the Random forest has a better ability to capture the variability of the data.
+
+### Model Performance Metrics (MSE, R-Squared)
+```{r}
+
+model_names <- c("Linear Regression", "Random Forest")
+mse_values <- c(mse_lm1, mse_rf)
+rsquared_values <- c(r_squared_lm1, r_squared_rf)
+
+# Bar chart for MSE
+barplot(mse_values, names.arg = model_names, col = c("blue", "red"), ylim = c(0, max(mse_values) + 5), main = "Comparison of Mean Squared Error (MSE) - Linear Regression vs. Random Forest")
+
+# Bar chart for R-squared
+barplot(rsquared_values, names.arg = model_names, col = c("blue", "red"), ylim = c(0, 1), main = "Comparison of R-squared - Linear Regression vs. Random Forest")
+
+
+```
+
+### Random Forest Classifier model
+
+```{r}
+set.seed(123)
+rf_cat_model <- randomForest(BMI_Categories ~ Age + Height + FAF_Level + family_history_with_overweight + NCP + CH2O_Levels + Gender + FAVC + CAEC + SMOKE + SCC + CALC + MTRANS,data = train_data)
+print((rf_cat_model))
+#Predict
+predictions <- predict(rf_cat_model, newdata = test_data)
+
+#Evaluate
+accuracy <- mean(predictions == test_data$BMI_Categories)
+print(paste("Accuracy:", round(accuracy * 100, 2), "%"))
+
+
+```
+Out-Of-Bag (OOB) error estimate tells us that 82.67% of the OOB samples were correctly classified by random forest.
+
+
+### Conclusion: 
+Based on the statistical test and visual representation for our first inference, we can conclude that, on average, individuals with lower physical activity levels tend to have higher BMI compared to those with higher physical activity levels.
+
+By conducting the second inference we observed that for males, there is a significant difference in BMI among different levels of CH2O, with the most significant difference observed between "Adequate" and "Moderate."
+For females, there are highly significant differences in BMI among all levels of CH2O.
+These results suggest that the level of water consumption (CH2O) is associated with significant differences in BMI, and the strength of this association may vary between males and females. The Tukey's HSD post-hoc test provides insights into specific pairwise differences between CH2O levels.
+
+For the third inference the calculated p-value is 0.9639, which is much higher than the common significance level of 0.05, we fail to reject the null hypothesis. There is not enough evidence to suggest a significant difference in mean BMI between individuals who smoke (group "yes") and those who don't (group "no"). The confidence interval, including zero, further supports this conclusion.
+
+For our fourth inference the p-value being extremely small indicates strong evidence against the null hypothesis. Therefore, we can reject the null hypothesis and conclude that there is a significant difference in BMI between individuals with and without a family history of overweight. The confidence interval further supports this conclusion, showing a substantial difference in the means.It suggests that family history of overweight is associated with a significantly higher mean BMI.
+
+For fifth hypothesis the extremely small p-value provides strong evidence against the null hypothesis. Therefore, we can reject the null hypothesis and conclude that there is a significant difference in BMI between individuals who consume high-calorie foods frequently and those who do not. The 95% confidence interval for the difference in means (-6.889981, -5.418010) further supports this conclusion. It indicates that, on average, individuals who consume high-calorie foods frequently have a significantly higher BMI compared to those who do not.
+
+Lower MSE values indicate better performance; they represent smaller errors between predicted and actual values. Higher R-Squared values explain the variability in the dependent variable based on the independent variables. 
+The Random Forest model has a lower MSE (8.896) and a higher R-Squared (85.58%) compared to the Linear Regression model MSE (33.5923) R-Squared (44.35), based on the test dataset, the Random Forest model provides more accurate predictions of BMI compared to the Linear Regression model.
+
+After comparing various models and employing distinct methodologies, our analysis reveals that the random forest model outperformed other methods, providing a superior fit to the data. The random forest algorithm demonstrated stronger predictive capabilities and a better overall performance compared to alternative models, suggesting its efficacy in accurately estimating the target variable.
+
+
